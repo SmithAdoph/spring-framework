@@ -253,7 +253,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		Object bean;
 
 		// Eagerly check singleton cache for manually registered singletons.
+//		首先尝试获取单例bean，默认为单例
+//		提前曝光ObjectFactory解决循环依赖（单例）
 		Object sharedInstance = getSingleton(beanName);
+
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
 				if (isSingletonCurrentlyInCreation(beanName)) {
@@ -264,6 +267,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					logger.trace("Returning cached instance of singleton bean '" + beanName + "'");
 				}
 			}
+
+//			getObjectForBeanInstance
+			// 返回实例，FactoryBean 的情况下，并不是直接返回实例本身而是返回指定方法返回的实例
 			bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
 
@@ -275,28 +281,38 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			}
 
 			// Check if bean definition exists in this factory.
+//			如果未找到对应的单例bean存在，去parentBeanFactory递归查找
 			BeanFactory parentBeanFactory = getParentBeanFactory();
+
+//			并且当前BeanFactory不存在这个Bean的BeanDefinition
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
+//				如果是BeanFactory去掉前缀&
 				String nameToLookup = originalBeanName(name);
+
+//				根据不同的参数进行递归调用获取bean
 				if (parentBeanFactory instanceof AbstractBeanFactory) {
 					return ((AbstractBeanFactory) parentBeanFactory).doGetBean(
 							nameToLookup, requiredType, args, typeCheckOnly);
 				}
 				else if (args != null) {
 					// Delegation to parent with explicit args.
+					// 带参数
 					return (T) parentBeanFactory.getBean(nameToLookup, args);
 				}
 				else if (requiredType != null) {
 					// No args -> delegate to standard getBean method.
+					// 带requiredType
 					return parentBeanFactory.getBean(nameToLookup, requiredType);
 				}
 				else {
+					// 不带参数
 					return (T) parentBeanFactory.getBean(nameToLookup);
 				}
 			}
 
 			if (!typeCheckOnly) {
+//				标记bean为至少创建过一次
 				markBeanAsCreated(beanName);
 			}
 
@@ -306,10 +322,14 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (requiredType != null) {
 					beanCreation.tag("beanType", requiredType::toString);
 				}
+
+//				合并到RootBeanDefinition
 				RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
+				// 如果是抽象类抛出异常
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
+//				检查depends on依赖bean是否初始化
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -328,10 +348,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					}
 				}
 
+//				根据不同的scope进行创建bean
 				// Create bean instance.
 				if (mbd.isSingleton()) {
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
+							// 真正创建bean的地方
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {
@@ -1839,6 +1861,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
+//		是否为FactoryBean的前缀&打头
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
@@ -1855,6 +1878,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		// Now we have the bean instance, which may be a normal bean or a FactoryBean.
 		// If it's a FactoryBean, we use it to create a bean instance, unless the
 		// caller actually wants a reference to the factory.
+//		如果非FactoryBean直接返回
 		if (!(beanInstance instanceof FactoryBean)) {
 			return beanInstance;
 		}
@@ -1864,6 +1888,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			mbd.isFactoryBean = true;
 		}
 		else {
+//			先读缓存
 			object = getCachedObjectForFactoryBean(beanName);
 		}
 		if (object == null) {

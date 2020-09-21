@@ -124,7 +124,6 @@ class XmlBeanFactoryTests {
 		return new ClassPathResource(CLASSNAME + suffix, CLASS);
 	}
 
-
 	@Test  // SPR-2368
 	void collectionsReferredToAsRefLocals() {
 		DefaultListableBeanFactory factory = new DefaultListableBeanFactory();

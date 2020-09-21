@@ -329,6 +329,9 @@ class BeanDefinitionValueResolver {
 					resolvedName = String.valueOf(doEvaluate(ref.getBeanName()));
 					bean = this.beanFactory.getBean(resolvedName);
 				}
+				// Register a dependent bean for the given bean,
+				// to be destroyed before the given bean is destroyed
+				// 注册依赖，销毁的时候执行destroyed方法
 				this.beanFactory.registerDependentBean(resolvedName, this.beanName);
 			}
 			if (bean instanceof NullBean) {
